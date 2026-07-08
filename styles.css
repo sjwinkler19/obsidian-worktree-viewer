@@ -1,0 +1,112 @@
+.worktree-view-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.worktree-view-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+.worktree-view-branch {
+  font-weight: 600;
+}
+.worktree-view-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.worktree-view-error {
+  color: var(--text-error);
+  padding: 8px;
+}
+.worktree-view-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.worktree-view-folder-btn {
+  color: var(--text-muted);
+  padding: 2px;
+}
+.worktree-view-folder-btn:hover {
+  color: var(--text-normal);
+}
+.worktree-view-file {
+  display: flex;
+  gap: 6px;
+  padding: 3px 0 3px 12px;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  word-break: break-all;
+}
+.worktree-view-file:hover {
+  color: var(--text-accent);
+}
+.worktree-view-status {
+  font-weight: 700;
+  font-family: var(--font-monospace);
+}
+.worktree-view-status-A { color: var(--color-green); }
+.worktree-view-status-D { color: var(--color-red); }
+.worktree-view-status-M { color: var(--color-orange); }
+.worktree-file-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.worktree-diff {
+  font-family: var(--font-monospace);
+  font-size: var(--font-smaller);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.worktree-diff-add { color: var(--color-green); }
+.worktree-diff-del { color: var(--color-red); }
+.worktree-diff-hunk { color: var(--text-muted); }
+.worktree-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.worktree-view-row {
+  gap: 6px;
+}
+.worktree-spacer { flex: 1; }
+.worktree-chevron { color: var(--text-muted); }
+.worktree-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
+}
+.worktree-dot-active {
+  background: var(--color-green);
+  animation: worktree-pulse 2s ease-in-out infinite;
+}
+@keyframes worktree-pulse {
+  50% { opacity: 0.35; }
+}
+.worktree-view-fresh {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.worktree-stale {
+  color: var(--color-orange);
+  font-size: var(--font-ui-smaller);
+  padding: 2px 12px;
+}
+.worktree-merge-btn {
+  margin: 8px 0 4px 12px;
+  font-size: var(--font-ui-smaller);
+}
+.worktree-footer {
+  padding: 7px 12px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+  border-top: 1px solid var(--background-modifier-border);
+}
