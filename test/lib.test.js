@@ -113,7 +113,14 @@ test('buildCwdIndex + newestJsonlMtime: reads cwd from first lines, missing dir 
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const projDir = path.join(root, '-Users-synthetic-My-Repo');
   fs.mkdirSync(projDir);
-  fs.writeFileSync(path.join(projDir, 'sess.jsonl'), JSON.stringify({ cwd: '/synthetic/My Repo' }) + '\n{"more":"lines"}\n');
+  // Regression: ISSUE-001 — real transcripts open with last-prompt/summary
+  // records; cwd first appears on a LATER line. Found by /qa on 2026-07-08.
+  fs.writeFileSync(
+    path.join(projDir, 'sess.jsonl'),
+    '{"type":"last-prompt","leafUuid":"x"}\n' +
+    '{"type":"summary","summary":"synthetic"}\n' +
+    JSON.stringify({ type: 'user', cwd: '/synthetic/My Repo' }) + '\n{"more":"lines"}\n'
+  );
   const junkDir = path.join(root, 'junk');
   fs.mkdirSync(junkDir);
   fs.writeFileSync(path.join(junkDir, 'bad.jsonl'), 'not json\n');

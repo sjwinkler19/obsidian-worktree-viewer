@@ -183,14 +183,20 @@ function buildCwdIndex(projectsDir, fsi = fs) {
     for (const f of files) {
       try {
         const fd = fsi.openSync(path.join(dir, f), 'r');
-        const buf = Buffer.alloc(8192);
-        const n = fsi.readSync(fd, buf, 0, 8192, 0);
+        const buf = Buffer.alloc(65536);
+        const n = fsi.readSync(fd, buf, 0, 65536, 0);
         fsi.closeSync(fd);
-        const text = buf.slice(0, n).toString('utf8');
-        const nl = text.indexOf('\n');
-        const cwd = JSON.parse(nl === -1 ? text : text.slice(0, nl)).cwd;
+        // cwd is rarely on line 1 (transcripts open with last-prompt/summary
+        // records) — scan every complete line in the chunk until one has it.
+        const lines = buf.slice(0, n).toString('utf8').split('\n');
+        let cwd = null;
+        for (const line of lines) {
+          if (!line.includes('"cwd"')) continue;
+          try { cwd = JSON.parse(line).cwd; } catch (_) { /* partial last line */ }
+          if (cwd) break;
+        }
         if (cwd) { index.set(cwd, dir); break; }
-      } catch (_) { /* malformed or >8k first line — try the next file */ }
+      } catch (_) { /* unreadable — try the next file */ }
     }
   }
   return index;
