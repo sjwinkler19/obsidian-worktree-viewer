@@ -170,6 +170,45 @@ async function mergeAndPrune(mainPath, mainBranch, wt, { commitFirst = false } =
   await gitFn(mainPath, ['branch', '-d', wt.branch]);
 }
 
+// GitHub remote parsing for the PR flow (https and ssh forms).
+function parseGithubRemote(url) {
+  const m = String(url).trim().match(/github\.com[:/]([^/]+)\/(.+?)(?:\.git)?$/);
+  return m ? { owner: m[1], repo: m[2] } : null;
+}
+
+function compareUrl(remoteUrl, base, branch) {
+  const gh = parseGithubRemote(remoteUrl);
+  if (!gh) return null;
+  return `https://github.com/${gh.owner}/${gh.repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(branch)}?expand=1`;
+}
+
+// The accept action: commit (optional) → push branch → open a PR.
+// Non-destructive by design — the worktree and branch stay until the PR
+// merges on GitHub, so no preflight/TOCTOU apparatus is needed here.
+async function pushAndCreatePr(mainBranch, wt, { commitFirst = false, exec = execFileP } = {}, gitFn = git) {
+  if (commitFirst) {
+    await gitFn(wt.path, ['add', '-A']);
+    await gitFn(wt.path, ['commit', '-m', `worktree: accept ${wt.branch}`]);
+  }
+  const ahead = parseInt((await gitFn(wt.path, ['rev-list', '--count', `${mainBranch}..${wt.branch}`])).trim(), 10);
+  if (!ahead) throw new Error(`nothing to PR: no commits beyond ${mainBranch}`);
+  await gitFn(wt.path, ['push', '-u', 'origin', wt.branch]); // ponytail: remote hardcoded to origin
+  try {
+    const { stdout } = await exec('gh', [
+      'pr', 'create', '--head', wt.branch, '--base', mainBranch,
+      '--title', `Accept ${wt.branch}`, '--body', 'Created from Obsidian Worktree Viewer.',
+    ], { cwd: wt.path });
+    const url = (String(stdout).match(/https:\/\/\S+/) || [])[0];
+    return { url: url || String(stdout).trim(), created: true };
+  } catch (e) {
+    // gh missing/unauthed/PR already exists — fall back to the compare page
+    const remote = (await gitFn(wt.path, ['remote', 'get-url', 'origin'])).trim();
+    const url = compareUrl(remote, mainBranch, wt.branch);
+    if (!url) throw new Error(`pushed, but PR creation failed: ${String(e.stderr || e.message || '').trim()}`);
+    return { url, created: false };
+  }
+}
+
 // Maps real cwd → Claude project dir by reading the cwd field from transcript
 // first lines — no slug-rule guessing, the rule has already drifted [D8.4].
 function buildCwdIndex(projectsDir, fsi = fs) {
@@ -229,6 +268,7 @@ if (!obsidian) {
   module.exports = {
     git, parseWorktrees, parseNameStatus, parseStatusZ, parseUntracked, unionChanges,
     filterMainStatus, rowSlice, preflightDecision, runPreflight, mergeAndPrune,
+    parseGithubRemote, compareUrl, pushAndCreatePr,
     buildCwdIndex, newestJsonlMtime, relativeTime,
   };
   return;
@@ -475,15 +515,21 @@ class WorktreeView extends ItemView {
       };
     }
     if (!row.isMain && row.branch && !row.bare) {
-      const btn = el.createEl('button', { cls: 'worktree-merge-btn', text: 'Merge & prune ⚠' });
+      const btn = el.createEl('button', { cls: 'worktree-merge-btn', text: 'Create PR ↗' });
       btn.onclick = async (ev) => {
         ev.stopPropagation();
         btn.disabled = true;
         try {
-          const decision = await runPreflight(state.main.path, state.base, row);
-          new MergeModal(this.app, this.plugin, row, decision).open();
+          const [wtStatus, aheadRaw] = await Promise.all([
+            git(row.path, ['status', '--porcelain', '-z']),
+            git(row.path, ['rev-list', '--count', `${state.base}..${row.branch}`]),
+          ]);
+          new PrModal(this.app, this.plugin, row, {
+            dirty: Boolean(wtStatus.trim()),
+            ahead: parseInt(aheadRaw.trim(), 10) || 0,
+          }).open();
         } catch (e) {
-          new Notice(`Preflight failed: ${e.message}`, 8000);
+          new Notice(`Cannot read worktree state: ${e.message}`, 8000);
         } finally {
           btn.disabled = false;
         }
@@ -526,48 +572,43 @@ class WorktreeView extends ItemView {
   }
 }
 
-class MergeModal extends Modal {
-  constructor(app, plugin, row, decision) {
+class PrModal extends Modal {
+  constructor(app, plugin, row, info) {
     super(app);
     this.plugin = plugin;
     this.row = row;
-    this.decision = decision;
+    this.info = info; // { dirty, ahead }
   }
 
   onOpen() {
     const { contentEl } = this;
     const state = this.plugin.store.state;
-    contentEl.createEl('h3', { text: 'Merge & prune' });
-    contentEl.createDiv({ text: `${this.row.branch} → ${state.base} (fast-forward), then remove the worktree and delete the branch.` });
+    const { dirty, ahead } = this.info;
+    contentEl.createEl('h3', { text: 'Create pull request' });
+    contentEl.createDiv({ text: `${this.row.branch} → PR into ${state.base} on GitHub.` });
     contentEl.createDiv({ cls: 'worktree-view-meta', text: this.row.path });
-    if (this.row.lastActivity) {
-      // Advisory only — an idle-looking session may still hold this worktree [D8.8]
-      contentEl.createDiv({
-        cls: 'worktree-view-meta',
-        text: `Last agent activity ${relativeTime(Date.now() - this.row.lastActivity)} ago — an idle-looking session may still hold this worktree as its working directory.`,
-      });
+    if (dirty) {
+      contentEl.createDiv({ cls: 'worktree-view-meta', text: `${this.row.changes.length} changed file${this.row.changes.length === 1 ? '' : 's'} will be committed to ${this.row.branch} first.` });
     }
-    if (!this.decision.ok) {
-      contentEl.createDiv({ cls: 'worktree-view-error', text: this.decision.reason });
+    contentEl.createDiv({ cls: 'worktree-view-meta', text: 'Nothing is deleted — the worktree and branch stay until the PR merges.' });
+    if (!dirty && !ahead) {
+      contentEl.createDiv({ cls: 'worktree-view-error', text: `Nothing to PR: no commits or changes beyond ${state.base}.` });
     }
     const btns = contentEl.createDiv({ cls: 'modal-button-container' });
-    const execute = async (commitFirst) => {
-      btns.querySelectorAll('button').forEach((b) => { b.disabled = true; }); // double-click guard
-      try {
-        await mergeAndPrune(state.main.path, state.base, this.row, { commitFirst });
-        new Notice(`Merged ${this.row.branch} and pruned its worktree.`);
-      } catch (e) {
-        new Notice(`Merge failed: ${e.message}`, 10000);
-      }
-      this.close();
-      this.plugin.store.refresh();
-    };
-    if (this.decision.ok) {
-      const ok = btns.createEl('button', { cls: 'mod-cta', text: 'Merge & prune' });
-      ok.onclick = () => execute(false);
-    } else if (this.decision.canCommitThenMerge) {
-      const ok = btns.createEl('button', { cls: 'mod-cta', text: 'Commit all & merge' });
-      ok.onclick = () => execute(true); // [D8.7]
+    if (dirty || ahead) {
+      const ok = btns.createEl('button', { cls: 'mod-cta', text: dirty ? 'Commit all & create PR' : 'Create PR' });
+      ok.onclick = async () => {
+        btns.querySelectorAll('button').forEach((b) => { b.disabled = true; }); // double-click guard
+        try {
+          const result = await pushAndCreatePr(state.base, this.row, { commitFirst: dirty });
+          new Notice(result.created ? `PR created: ${result.url}` : 'Branch pushed — opening GitHub to finish the PR.', 8000);
+          require('electron').shell.openExternal(result.url);
+        } catch (e) {
+          new Notice(`PR failed: ${e.message}`, 10000);
+        }
+        this.close();
+        this.plugin.store.refresh();
+      };
     }
     const cancel = btns.createEl('button', { text: 'Cancel' });
     cancel.onclick = () => this.close();

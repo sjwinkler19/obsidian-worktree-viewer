@@ -1,7 +1,7 @@
 {
   "id": "worktree-viewer",
   "name": "Worktree Viewer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.0.0",
   "description": "View the git worktrees of a repository in a sidebar panel.",
   "author": "Sebastian Winkler",
