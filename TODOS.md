@@ -8,7 +8,9 @@
 - **Context:** v0.2's WorktreeStore already computes per-worktree changed-file lists diffed against merge-base (D8.6) in per-row slices (D8.2) — the reverse index (vault-relative path → worktrees touching it) is a cheap byproduct. Vault-relative mapping must account for vault = repo subfolder (Telos/Telos).
 - **Depends on:** v0.2 store shipped.
 
-## v0.3: Rebase-and-merge for non-ff worktrees
+## ~~Rebase-and-merge for non-ff worktrees~~ (mostly moot as of v0.3.0)
+> The accept action became "commit & create PR" (2026-07-08, user call) — GitHub handles
+> non-ff merges, so the local rebase path only matters if a local-merge option ever returns.
 - **What:** When main has moved since a worktree branched, offer rebase-onto-main then ff-merge, with `git merge-tree` (git ≥ 2.38) conflict pre-check; refuse on conflicts with the conflicting paths named.
 - **Why:** With sequential agent merges, the second merge of the day is routinely non-ff — v0.2's refusal will fire regularly.
 - **Pros:** Closes the loop for the multi-agent day fully inside Obsidian.
