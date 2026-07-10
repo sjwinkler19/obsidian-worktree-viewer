@@ -24,6 +24,14 @@ Settings → Worktree Viewer → **Repository path**: the absolute path of the g
 
 Requirements: desktop only; `git` on PATH; [`gh`](https://cli.github.com) (optional — enables direct PR creation, otherwise you get the GitHub compare page).
 
+## Disclosures
+
+Per Obsidian's developer policies, this plugin:
+
+- **Accesses files outside your vault.** That is its purpose: it reads the git repository you configure in settings (which may contain your vault), its worktrees, and — for the agent presence dots — file modification times and the `cwd` field of Claude Code session transcripts under `~/.claude/projects/`. All reads are local; transcript contents are never displayed, stored, or transmitted.
+- **Executes local binaries.** It shells out to your installed `git` (read-only polling with `--no-optional-locks`; write operations only when you explicitly click Create PR) and, optionally, the GitHub CLI (`gh`).
+- **Uses the network only on your explicit action.** Clicking "Create PR" runs `git push` to your repository's `origin` remote and creates a pull request via `gh` (or opens the GitHub compare page). There is no other network activity — no telemetry, no ads, no update mechanism, no remote code.
+
 ## Development
 
 Plain JavaScript, no build step, zero dependencies. Tests use node's built-in runner:
