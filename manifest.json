@@ -1,7 +1,7 @@
 {
   "id": "worktree-viewer",
   "name": "Worktree Viewer",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minAppVersion": "1.0.0",
   "description": "Watch git worktrees live from your vault: agent presence dots, per-worktree diffs and previews, one-click commit and pull request creation.",
   "author": "Sebastian Winkler",

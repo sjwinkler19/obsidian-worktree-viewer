@@ -584,7 +584,7 @@ class PrModal extends Modal {
     const { contentEl } = this;
     const state = this.plugin.store.state;
     const { dirty, ahead } = this.info;
-    contentEl.createEl('h3', { text: 'Create pull request' });
+    this.titleEl.setText('Create pull request'); // store guideline: no HTML heading elements
     contentEl.createDiv({ text: `${this.row.branch} → PR into ${state.base} on GitHub.` });
     contentEl.createDiv({ cls: 'worktree-view-meta', text: this.row.path });
     if (dirty) {
