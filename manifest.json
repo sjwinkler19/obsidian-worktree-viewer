@@ -1,9 +1,10 @@
 {
   "id": "worktree-viewer",
   "name": "Worktree Viewer",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minAppVersion": "1.0.0",
-  "description": "View the git worktrees of a repository in a sidebar panel.",
+  "description": "Watch git worktrees live from your vault: agent presence dots, per-worktree diffs and previews, one-click commit and pull request creation.",
   "author": "Sebastian Winkler",
+  "authorUrl": "https://github.com/sjwinkler19",
   "isDesktopOnly": true
 }
