@@ -14,7 +14,7 @@ Every Obsidian git plugin versions your vault. This one inverts that: your vault
 
 ## Install
 
-**Via [BRAT](https://github.com/TfTHacker/obsidian42-brat)** (recommended): add `sjwinkler19/obsidian-worktree-viewer` as a beta plugin.
+In Obsidian: **Settings → Community plugins → Browse**, search for **"Worktree Viewer"**, install and enable. ([Directory listing](https://community.obsidian.md/plugins/worktree-viewer))
 
 **Manual:** download `main.js`, `manifest.json`, `styles.css` from the [latest release](../../releases/latest) into `<vault>/.obsidian/plugins/worktree-viewer/`, then enable it in Settings → Community plugins.
 
